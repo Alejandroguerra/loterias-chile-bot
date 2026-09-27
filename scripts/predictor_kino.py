@@ -1,6 +1,3 @@
-# ==============================================================================
-# PREDICTOR ESTADÍSTICO KINO CHILE (ROBUSTO)
-# ==============================================================================
 import csv
 from itertools import combinations
 from collections import Counter
@@ -18,31 +15,25 @@ class PredictorKinoCloud:
                 lector = csv.reader(f)
                 for fila in lector:
                     fila_limpia = [x.strip() for x in fila if x.strip()]
-                    if len(fila_limpia) < 14: 
-                        continue
-                    
+                    if len(fila_limpia) < 14: continue
                     try:
-                        nums = []
-                        for x in fila_limpia[-14:]:
-                            nums.append(int(x))
-                        nums.sort()
+                        nums = sorted([int(x) for x in fila_limpia[-14:]])
                         self.historico.append(frozenset(nums))
                         for dupla in combinations(nums, 2):
                             self.frecuencia_duplas[dupla] += 1
                     except ValueError:
                         continue
-                        
             self.top_duplas = [e for e, c in self.frecuencia_duplas.most_common(40)]
             if not self.top_duplas:
-                self.top_duplas = [tuple(range(1, 3))]
-        except Exception as e:
-            print(f"Error leyendo Kino: {e}")
-            self.top_duplas = []
+                self.top_duplas = [(1, 2)]
+        except Exception:
+            self.top_duplas = [(1, 2)]
 
     def generar(self, cantidad=5):
-        if not self.top_duplas: return []
         jugadas = []
-        while len(jugadas) < cantidad:
+        intentos_totales = 0
+        while len(jugadas) < cantidad and intentos_totales < 5000:
+            intentos_totales += 1
             comb = set(random.choice(self.top_duplas))
             while len(comb) < 14:
                 comb.add(random.randint(1, 25))
@@ -63,4 +54,10 @@ class PredictorKinoCloud:
                 continue
             if comb not in [set(j) for j in jugadas]:
                 jugadas.append(comb)
+                
+        while len(jugadas) < cantidad:
+            fallback = sorted(random.sample(range(1, 26), 14))
+            if set(fallback) not in [set(j) for j in jugadas]:
+                jugadas.append(set(fallback))
+                
         return [sorted(list(j)) for j in jugadas]
