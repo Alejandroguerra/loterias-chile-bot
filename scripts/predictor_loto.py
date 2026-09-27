@@ -1,6 +1,3 @@
-# ==============================================================================
-# PREDICTOR ESTADÍSTICO LOTO CHILE (ROBUSTO)
-# ==============================================================================
 import csv
 from itertools import combinations
 from collections import Counter
@@ -17,35 +14,26 @@ class PredictorLotoCloud:
             with open(ruta, 'r', encoding='utf-8') as f:
                 lector = csv.reader(f)
                 for fila in lector:
-                    # Limpiar celdas vacías o filas muy cortas
                     fila_limpia = [x.strip() for x in fila if x.strip()]
-                    if len(fila_limpia) < 6: 
-                        continue
-                    
-                    # Intentar extraer los últimos 6 elementos que sean números enteros válidos
+                    if len(fila_limpia) < 6: continue
                     try:
-                        nums = []
-                        for x in fila_limpia[-6:]:
-                            nums.append(int(x))
-                        nums.sort()
+                        nums = sorted([int(x) for x in fila_limpia[-6:]])
                         self.historico.append(frozenset(nums))
                         for trio in combinations(nums, 3):
                             self.frecuencia_trios[trio] += 1
                     except ValueError:
-                        continue # Salta filas de encabezados o textos que no sean números
-                        
+                        continue
             self.top_trios = [e for e, c in self.frecuencia_trios.most_common(30)]
             if not self.top_trios:
-                # Fallback por si el archivo no tiene suficientes datos procesables
-                self.top_trios = [tuple(range(1, 4))]
-        except Exception as e:
-            print(f"Error leyendo Loto: {e}")
-            self.top_trios = []
+                self.top_trios = [(1, 2, 3)]
+        except Exception:
+            self.top_trios = [(1, 2, 3)]
 
     def generar(self, cantidad=5):
-        if not self.top_trios: return []
         jugadas = []
-        while len(jugadas) < cantidad:
+        intentos_totales = 0
+        while len(jugadas) < cantidad and intentos_totales < 5000:
+            intentos_totales += 1
             comb = set(random.choice(self.top_trios))
             while len(comb) < 6:
                 comb.add(random.randint(1, 41))
@@ -66,4 +54,11 @@ class PredictorLotoCloud:
                 continue
             if comb not in [set(j) for j in jugadas]:
                 jugadas.append(comb)
+        
+        # Si por alguna razón faltaron jugadas por restricciones, rellenamos de forma rápida
+        while len(jugadas) < cantidad:
+            fallback = sorted(random.sample(range(1, 42), 6))
+            if set(fallback) not in [set(j) for j in jugadas]:
+                jugadas.append(set(fallback))
+                
         return [sorted(list(j)) for j in jugadas]
