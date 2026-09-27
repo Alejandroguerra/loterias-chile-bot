@@ -1,5 +1,5 @@
 # ==============================================================================
-# PREDICTOR ESTADÍSTICO KINO CHILE (MINERÍA DE DUPLAS Y TRÍOS)
+# PREDICTOR ESTADÍSTICO KINO CHILE (ROBUSTO)
 # ==============================================================================
 import csv
 from itertools import combinations
@@ -16,21 +16,31 @@ class PredictorKinoCloud:
         try:
             with open(ruta, 'r', encoding='utf-8') as f:
                 lector = csv.reader(f)
-                next(lector)
                 for fila in lector:
-                    if len(fila) < 14: continue
+                    fila_limpia = [x.strip() for x in fila if x.strip()]
+                    if len(fila_limpia) < 14: 
+                        continue
+                    
                     try:
-                        nums = sorted([int(x) for x in fila[-14:]])
+                        nums = []
+                        for x in fila_limpia[-14:]:
+                            nums.append(int(x))
+                        nums.sort()
+                        self.historico.append(frozenset(nums))
+                        for dupla in combinations(nums, 2):
+                            self.frecuencia_duplas[dupla] += 1
                     except ValueError:
                         continue
-                    self.historico.append(frozenset(nums))
-                    for dupla in combinations(nums, 2):
-                        self.frecuencia_duplas[dupla] += 1
+                        
             self.top_duplas = [e for e, c in self.frecuencia_duplas.most_common(40)]
-        except FileNotFoundError:
-            print(f"No se encontró el archivo en {ruta}")
+            if not self.top_duplas:
+                self.top_duplas = [tuple(range(1, 3))]
+        except Exception as e:
+            print(f"Error leyendo Kino: {e}")
+            self.top_duplas = []
 
     def generar(self, cantidad=5):
+        if not self.top_duplas: return []
         jugadas = []
         while len(jugadas) < cantidad:
             comb = set(random.choice(self.top_duplas))
